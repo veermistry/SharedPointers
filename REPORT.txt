@@ -1,0 +1,21 @@
+* How would you implement shared mappings (multiple threads mapping the same
+  file and sharing their changes and writing them back to the file)?
+
+I would implement shared mappings by making my Virtual_Node struct for my 
+LinkedList have a public Shared<Node> field so that multiple threads can access
+that same shared node. Accessing the Shared<Node> will allow us to utilize
+reference counting and therefore safely have multi-threading for shared mapping.
+
+* Read about the use of copy-on-write in virtual memory systems. Why is it a
+  good idea? How would you implement it?
+
+Copy-on-write is a good idea because of its extremely memory efficient logic, 
+where it ensures unnecessary copies of a page are not made when child processes
+fork the parent process that has the page. This is achieved and I would implement
+this by keeping track of which pages are shared, and when a shared page is trying 
+to be written to, a new page will be made where the contents are copied from the 
+shared page, and then update the page table in that page as opposed to the shared
+page itself.
+
+
+Source: https://en.wikipedia.org/wiki/Copy-on-write 
