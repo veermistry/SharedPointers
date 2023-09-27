@@ -1,101 +1,68 @@
-Due:
-    test 4/1/2023 @ 11:59pm
-    code 4/3/2023 @ 11:59pm
+Shared Pointers
+This repository contains a C++ implementation of a simple shared pointer, named Shared, providing basic memory management capabilities through reference counting.
 
-Assignment:
-~~~~~~~~~~~
+Overview
+The Shared class is a template class designed to manage the lifecycle of dynamically allocated objects. It employs a reference counting mechanism to automatically handle memory deallocation when the last reference to the object is released.
 
-    - Enable virtual memory
-    - Donate a test case (.ok, .cc, .dir)
+Features
+- Reference Counting: The shared pointer keeps track of the number of references to the managed object using a reference count.
+- Copy Semantics: Supports copy construction and assignment, allowing multiple shared pointers to manage the same object.
+- Move Semantics: Supports move construction and assignment, efficiently transferring ownership of the managed object.
+- Operator Overloading: Overloaded operators for member access (->) and comparison (== and !=).
+- Factory Function: Provides a make static member function for convenient creation of shared pointers.
 
-The physical address space:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    0x00000000 - 0x00100000      kernel text and data
-    0x00100000 - 0x00600000      kernel heap
-    0x00600000 - kConfig.memSize available frames
-    kConfig.ioAPIC               the IOPIC (one page)
-    kConfig.localAPIC            the LAPIC (one page)
-
-The virtual address space:
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    The 0x00000000 - 0x80000000   is shared between all threads
-    The 0x80000000 - 0xFFFFFFFF+1 is private to each thread
-
-    0x00000000 - 0x00001000      invalid (causes a kernel panic)
-    0x00001000 - 0x00100000      kernel text and data
-    0x00100000 - 0x00600000      kernel heap
-    0x00600000 - kConfig.memSize available frames
-
-The upper half of the virtual address space (starting at 0x80000000) is
-private to each thread. It is initially invalid except for 2 permanent
-mappings for the LAPIC and IOPIC.
-
-The VMM::naive_mmap() and VMM::naive_munmap calls are used to create
-and remove mapping in this range
-
-The physical memory API (in physmem.h):
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// called by the bootstrap core to initialize the available frames area
-void PhysMem::init(uint32_t start, uint32_t size);
-
-// allocates a new 4K-aligned zero-filled frame, returns its physical address
-// panics if out of frames
-uint32_t PhysMem::alloc_frame();
-
-// frees an allocated 4K-aligned frame
-void PhysMem::free_dealloc_frame(uint32_t pa);
-
-The virtual memory API (in vmm.h):
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// called by the bootstrap core to initialize any global virtual memory
-// structures. Look in init.cc for exact placement
-void VMM::global_init();
-
-// called by each core to initialize any per-core virtual memory
-// structures. Look in init.cc for exact placement
-void VMM::per_core_init();
-
-// Maps the given file in the calling thread's virtual address space
-//     an over simplification of the Unix mmap system call
-//
-// 'size' indicates the size of the region to be mapped.
-//
-// 'file' indicates the file or directory whose contents is to be mapped
-//
-//     if 'file' is null then the region is zero-filled
-//
-//     if 'size' is larger the available bytes in the file, the rest of
-//        the space is zero-filled
-//
-// 'file_offset' indicates the starting offset of the region in the
-//      file that should be mapped
-//
-//  Returns the virtual address of the mapping, nullptr indicates error
-//
-//  Notes:
-//      - Your implementation should use demand-paging. Do not read
-//        the entire file during naive_mmap
-//      - All mappings are private
-//           * changes are not reflected back in the file
-//           * changes are not shared by multiple mappings
-//      - The implementation is free to round sizes up to page sizes
-//        No guarantees are made regarding the contents of the extra space
-//      - Mappings are always made at the lowest available virtual address
-//        in the 0x80000000-0xFFFFFFFF+1
-void* VMM::naive_mmap(uint32_t size, Shared<Node> file, uint32_t file_offset);
-
-// Unmaps the register containing the given virtual address
-//     an over simplification of the Unix munmap system call
-//
-// 'va' indicates a virtual address in the region to be unmapped
-//
-// Notes:
-//      - All failures are silent
-//      - Attempts to unmap the shared space, and the PICS are ignored
-void VMM::naive_unmap(void* va);
+Memory Management
+The shared pointer automatically manages the memory of the dynamically allocated object. When the last reference to the object is released, the object is deleted.
 
 
+Usage Description
+The provided code appears to be a part of a kernel or low-level system and involves operations related to an IDE device, Ext2 file system, shared pointers, memory mapping, and asynchronous computation. Let's break down the usage based on the code snippets:
+
+1. IDE and Ext2 initialization:
+
+auto ide = Shared<Ide>::make(1);
+auto fs = Shared<Ext2>::make(ide);
+
+Initializes an IDE device (representing the first IDE device) and an Ext2 file system using shared pointers for memory management.
+
+2. File System Operations:
+
+auto root = fs->root;
+auto idk = fs->find(root, "idk.txt");
+Retrieves the root directory of the file system and searches for the file "idk.txt" in the Ext2 file system.
+
+3. Memory Mapping:
+
+uint32_t* x = (uint32_t*) naive_mmap(idk->size_in_bytes(), idk, 0);
+Maps the content of the "idk.txt" file into memory. The pointer x points to the beginning of the mapped memory.
+
+4. Debug Printing and Unmapping:
+
+Debug::printf("*** x == %x\n", x);
+Debug::printf("%s\n", x);
+naive_munmap((void*)x);
+Prints the value of the pointer x and the content of the mapped memory. Then, unmaps the file that was previously mapped into memory.
+
+5. Asynchronous Computation (Thread Creation):
+
+auto thread = future<bool>([x] {
+    uint32_t* val = (uint32_t*) naive_mmap(1, Shared<Node>{}, 0);
+    Debug::printf("*** val == %x\n", val);
+    return true;
+});
+Creates a new thread (asynchronous computation) using the future class. The lambda function in the thread maps a single page of memory into the thread's address space.
+
+6. Thread Wait:
+
+thread->get();
+Waits for the asynchronous computation represented by the thread future to complete.
+
+7. Kernel Main Function:
+
+void kernelMain(void) {
+    // ... (previous code)
+}
+This is the entry point of the kernel, where the described operations are taking place.
+
+License
+This code is provided under the MIT License. Feel free to use, modify, and distribute it as needed.
